@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calculadora de IMC</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    :root {
+      --bg:      #0a0f1a;
+      --surface: #111827;
+      --border:  rgba(255,255,255,.08);
+      --accent:  #38bdf8;
+      --accent2: #818cf8;
+      --green:   #4ade80;
+      --red:     #f87171;
+      --yellow:  #fbbf24;
+      --orange:  #fb923c;
+      --blue:    #60a5fa;
+      --white:   #f8fafc;
+      --muted:   #64748b;
+      --text:    #cbd5e1;
+    }
+ 
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem 3rem;
+    }
+ 
+    .bg-glow { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .bg-glow span { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .15; }
+    .bg-glow span:nth-child(1) {
+      width: 600px; height: 600px; background: var(--accent2);
+      top: -200px; left: -150px;
+      animation: drift 14s ease-in-out infinite alternate;
+    }
+    .bg-glow span:nth-child(2) {
+      width: 500px; height: 500px; background: var(--accent);
+      bottom: -200px; right: -150px;
+      animation: drift 18s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes drift { from{transform:translate(0,0)} to{transform:translate(40px,40px)} }
+ 
+    .wrap { position: relative; z-index: 1; width: 100%; max-width: 460px; }
+ 
+    .header { text-align: center; margin-bottom: 2.4rem; }
+    .badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .3rem .9rem;
+      border: 1px solid rgba(56,189,248,.3); border-radius: 100px;
+      font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--accent); background: rgba(56,189,248,.07);
+      margin-bottom: 1.1rem;
+    }
+    .badge::before { content: '◉'; font-size: .6rem; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+ 
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.6rem; font-weight: 800; line-height: 1.05; letter-spacing: -.02em;
+    }
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(110deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .header p { margin-top: .6rem; font-size: .88rem; color: var(--muted); font-weight: 300; }
+ 
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 2rem 2rem 1.8rem;
+      box-shadow: 0 32px 64px rgba(0,0,0,.4);
+    }
+ 
+    .steps { display: flex; align-items: center; margin-bottom: 2rem; }
+    .step {
+      flex: 1; text-align: center;
+      font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+    }
+    .step.active { color: var(--accent); }
+    .step.done   { color: var(--green); }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: .78rem;
+      margin: 0 auto .4rem; transition: all .3s;
+    }
+    .step.active .step-num { background: rgba(56,189,248,.15); border-color: var(--accent); color: var(--accent); }
+    .step.done   .step-num { background: rgba(74,222,128,.15); border-color: var(--green);  color: var(--green); }
+    .step-line { flex: 0 0 30px; height: 1px; background: var(--border); margin-bottom: 1.2rem; }
+ 
+    .field { margin-bottom: 1.1rem; }
+    label {
+      display: block; font-size: .73rem; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--text); font-weight: 500; margin-bottom: .4rem;
+    }
+    input {
+      width: 100%; padding: .72rem 1rem;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--white);
+      font-family: 'DM Sans', sans-serif; font-size: .95rem;
+      outline: none; transition: border-color .2s, background .2s;
+    }
+    input::placeholder { color: var(--muted); }
+    input:focus { border-color: rgba(56,189,248,.5); background: rgba(56,189,248,.05); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+    .err-msg { font-size: .75rem; color: var(--red); margin-top: .3rem; display: none; }
+ 
+    .btn {
+      width: 100%; margin-top: .8rem; padding: .88rem 1rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none; border-radius: 12px; color: #fff;
+      font-family: 'Syne', sans-serif; font-size: .98rem; font-weight: 700; letter-spacing: .02em;
+      cursor: pointer; transition: opacity .2s, transform .15s;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+    }
+    .btn:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+ 
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+      animation: spin .7s linear infinite; display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+ 
+    .result-panel { display: none; margin-top: 1.4rem; border-radius: 14px; padding: 1.3rem 1.4rem; animation: slideUp .4s ease; }
+    @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+ 
+    .imc-display { text-align: center; margin-bottom: .9rem; }
+    .imc-val { font-family: 'Syne', sans-serif; font-size: 3.4rem; font-weight: 800; line-height: 1; }
+    .imc-label { font-size: .88rem; margin-top: .25rem; font-weight: 500; }
+ 
+    .bar-wrap { margin: .6rem 0 .3rem; }
+    .bar-track {
+      height: 7px; border-radius: 100px;
+      background: linear-gradient(to right, #60a5fa 0%, #4ade80 28%, #fbbf24 52%, #fb923c 70%, #f87171 86%, #ef4444 100%);
+      position: relative;
+    }
+    .bar-pin {
+      position: absolute; top: 50%; transform: translate(-50%,-50%);
+      width: 15px; height: 15px; border-radius: 50%;
+      background: #fff; border: 3px solid var(--bg); box-shadow: 0 0 0 2px #fff;
+      transition: left .6s cubic-bezier(.4,0,.2,1);
+    }
+    .bar-labels { display: flex; justify-content: space-between; font-size: .62rem; color: var(--muted); margin-top: .4rem; }
+ 
+    .info-row {
+      display: flex; justify-content: space-between; font-size: .83rem;
+      padding: .3rem 0; border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { color: var(--muted); }
+    .info-val { font-weight: 500; }
+ 
+    .btn-sec {
+      width: 100%; margin-top: .6rem; padding: .65rem 1rem;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: .88rem;
+      cursor: pointer; transition: background .2s;
+    }
+    .btn-sec:hover { background: rgba(255,255,255,.09); }
+ 
+    .success-screen { display: none; text-align: center; padding: 1.5rem 0 .5rem; animation: slideUp .4s ease; }
+    .checkmark {
+      width: 68px; height: 68px; border-radius: 50%;
+      background: rgba(74,222,128,.1); border: 2px solid rgba(74,222,128,.4);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.2rem; font-size: 2rem;
+    }
+    .success-screen h2 { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--green); }
+    .success-screen p { color: var(--muted); font-size: .9rem; margin-top: .5rem; line-height: 1.6; }
+ 
+    footer { margin-top: 2rem; text-align: center; font-size: .73rem; color: var(--muted); }
+ 
+    /* ── Responsivo mobile ── */
+    @media (max-width: 480px) {
+      body { padding: 1.2rem .75rem 2.5rem; justify-content: flex-start; }
+ 
+      .wrap { max-width: 100%; }
+ 
+      .header { margin-bottom: 1.6rem; }
+      h1 { font-size: 2rem; }
+      .header p { font-size: .82rem; }
+      .badge { font-size: .68rem; padding: .28rem .75rem; }
+ 
+      .card { padding: 1.4rem 1.2rem 1.4rem; border-radius: 18px; }
+ 
+      .steps { margin-bottom: 1.5rem; }
+      .step { font-size: .62rem; letter-spacing: .03em; }
+      .step-num { width: 24px; height: 24px; font-size: .72rem; }
+      .step-line { flex: 0 0 18px; }
+ 
+      .field { margin-bottom: .9rem; }
+      label { font-size: .68rem; }
+      input { padding: .68rem .85rem; font-size: .92rem; }
+ 
+      /* Peso e Altura empilham em telas muito pequenas */
+      @media (max-width: 340px) {
+        .grid2 { grid-template-columns: 1fr; gap: 0; }
+      }
+ 
+      .btn { padding: .82rem 1rem; font-size: .92rem; margin-top: .6rem; }
+      .btn-sec { padding: .6rem .85rem; font-size: .83rem; }
+ 
+      .imc-val { font-size: 2.8rem; }
+      .imc-label { font-size: .82rem; }
+ 
+      .bar-labels { font-size: .58rem; }
+ 
+      .info-row { font-size: .8rem; }
+ 
+      .result-panel { padding: 1rem 1rem; margin-top: 1rem; }
+ 
+      .checkmark { width: 58px; height: 58px; font-size: 1.6rem; }
+      .success-screen h2 { font-size: 1.35rem; }
+      .success-screen p  { font-size: .84rem; }
+ 
+      footer { font-size: .68rem; margin-top: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-glow"><span></span><span></span></div>
+
+<div class="wrap">
+  <div class="header">
+    <div class="badge">Sistema de Cadastro</div>
+    <h1>Calculadora<br>de <em>IMC</em></h1>
+    <p>Preencha os dados abaixo para registrar seu resultado</p>
+  </div>
+
+  <div class="card">
+
+    <div class="steps">
+      <div class="step active" id="s1"><div class="step-num">1</div>Dados</div>
+      <div class="step-line"></div>
+      <div class="step" id="s2"><div class="step-num">2</div>Resultado</div>
+      <div class="step-line"></div>
+      <div class="step" id="s3"><div class="step-num">3</div>Enviado</div>
+    </div>
+
+    <!-- ETAPA 1: Formulário -->
+    <div id="form-area">
+      <div class="field">
+        <label>Nome completo</label>
+        <input id="nome" type="text" placeholder="Ex: João da Silva" autocomplete="off"/>
+        <div class="err-msg" id="e-nome">Por favor, informe seu nome.</div>
+      </div>
+      <div class="field">
+        <label>Campus</label>
+        <input id="campus" type="text" placeholder="Ex: Campus Maceió" autocomplete="off"/>
+        <div class="err-msg" id="e-campus">Por favor, informe o campus.</div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Peso (kg)</label>
+          <input id="peso" type="number" placeholder="70.5" min="1" max="500" step="0.1"/>
+          <div class="err-msg" id="e-peso">Peso inválido.</div>
+        </div>
+        <div class="field">
+          <label>Altura (m)</label>
+          <input id="altura" type="number" placeholder="1.75" min="0.5" max="2.5" step="0.01"/>
+          <div class="err-msg" id="e-altura">Use metros (ex: 1.75).</div>
+        </div>
+      </div>
+      <button class="btn" onclick="calcular()">
+        <span>Calcular IMC →</span>
+      </button>
+    </div>
+
+    <!-- ETAPA 2: Resultado + confirmação -->
+    <div class="result-panel" id="result-panel">
+      <div class="imc-display">
+        <div class="imc-val" id="r-val"></div>
+        <div class="imc-label" id="r-label"></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-track"><div class="bar-pin" id="bar-pin" style="left:0%"></div></div>
+        <div class="bar-labels">
+          <span>Abaixo<br>&lt;18.5</span>
+          <span>Normal<br>18.5–25</span>
+          <span>Sobrepeso<br>25–30</span>
+          <span>Obeso<br>≥30</span>
+        </div>
+      </div>
+      <div style="margin-top:1rem">
+        <div class="info-row"><span class="info-key">Nome</span><span class="info-val" id="r-nome"></span></div>
+        <div class="info-row"><span class="info-key">Campus</span><span class="info-val" id="r-campus"></span></div>
+        <div class="info-row"><span class="info-key">Peso</span><span class="info-val" id="r-peso"></span></div>
+        <div class="info-row"><span class="info-key">Altura</span><span class="info-val" id="r-altura"></span></div>
+      </div>
+      <button class="btn" id="btn-send" onclick="enviar()">
+        <span id="btn-send-text">✓ Confirmar e Enviar</span>
+        <div class="spinner" id="spinner2"></div>
+      </button>
+      <button class="btn-sec" onclick="voltarForm()">← Corrigir dados</button>
+    </div>
+
+    <!-- ETAPA 3: Sucesso -->
+    <div class="success-screen" id="success-screen">
+      <div class="checkmark">✓</div>
+      <h2>Cadastro realizado!</h2>
+      <p>Seus dados foram registrados<br>com sucesso. Obrigado!</p>
+      <button class="btn-sec" style="margin-top:1.6rem" onclick="novoRegistro()">Novo cadastro</button>
+    </div>
+
+  </div><!-- .card -->
+  <footer>Seus dados são tratados com segurança.</footer>
+</div>
+
+<script>
+  // ┌─────────────────────────────────────────────────────────┐
+  // │  PASSO ÚNICO: cole a URL do Apps Script aqui abaixo    │
+  // └─────────────────────────────────────────────────────────┘
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzndxFZMVDhhRB9wPULHsPFdcnizxmcUUnZzaThb9LzM6UpL2Nct53U2jj_Tx1FnvBRPw/exec';
+
+  function classificar(imc) {
+    if (imc < 18.5) return { texto: 'Abaixo do peso',     cor: '#60a5fa' };
+    if (imc < 25)   return { texto: 'Peso normal',        cor: '#4ade80' };
+    if (imc < 30)   return { texto: 'Sobrepeso',          cor: '#fbbf24' };
+    if (imc < 35)   return { texto: 'Obesidade Grau I',   cor: '#fb923c' };
+    if (imc < 40)   return { texto: 'Obesidade Grau II',  cor: '#f87171' };
+    return               { texto: 'Obesidade Grau III',  cor: '#ef4444' };
+  }
+
+  function imcPct(imc) {
+    return Math.min(100, Math.max(0, ((imc - 10) / 35) * 100));
+  }
+
+  function showErr(id, show) {
+    document.getElementById('e-' + id).style.display = show ? 'block' : 'none';
+    document.getElementById(id).style.borderColor = show ? 'rgba(248,113,113,.6)' : '';
+  }
+
+  let dados = {};
+
+  function calcular() {
+    const nome   = document.getElementById('nome').value.trim();
+    const campus = document.getElementById('campus').value.trim();
+    const peso   = parseFloat(document.getElementById('peso').value);
+    const altura = parseFloat(document.getElementById('altura').value);
+
+    let ok = true;
+    showErr('nome',   !nome);                                       if (!nome)   ok = false;
+    showErr('campus', !campus);                                     if (!campus) ok = false;
+    showErr('peso',   isNaN(peso)   || peso   <= 0);                if (isNaN(peso)   || peso   <= 0)          ok = false;
+    showErr('altura', isNaN(altura) || altura <= 0 || altura > 3);  if (isNaN(altura) || altura <= 0 || altura > 3) ok = false;
+    if (!ok) return;
+
+    const imc = +(peso / (altura * altura)).toFixed(2);
+    const cls = classificar(imc);
+    dados = { nome, campus, peso, altura, imc, classificacao: cls.texto };
+
+    document.getElementById('r-val').textContent    = imc.toFixed(2);
+    document.getElementById('r-val').style.color    = cls.cor;
+    document.getElementById('r-label').textContent  = cls.texto;
+    document.getElementById('r-label').style.color  = cls.cor;
+    document.getElementById('r-nome').textContent   = nome;
+    document.getElementById('r-campus').textContent = campus;
+    document.getElementById('r-peso').textContent   = peso + ' kg';
+    document.getElementById('r-altura').textContent = altura + ' m';
+
+    const rp = document.getElementById('result-panel');
+    rp.style.background = cls.cor + '12';
+    rp.style.border      = '1px solid ' + cls.cor + '33';
+
+    document.getElementById('form-area').style.display    = 'none';
+    rp.style.display = 'block';
+    setTimeout(() => { document.getElementById('bar-pin').style.left = imcPct(imc) + '%'; }, 80);
+    setStep(2);
+  }
+
+  async function enviar() {
+    if (SCRIPT_URL === 'COLE_SUA_URL_AQUI') {
+      alert('⚠️ Você ainda não configurou a URL do Apps Script.\n\nSiga o tutorial no arquivo LEIA-ME.txt para gerar sua URL e cole no lugar de COLE_SUA_URL_AQUI no HTML.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-send');
+    btn.disabled = true;
+    document.getElementById('btn-send-text').style.display = 'none';
+    document.getElementById('spinner2').style.display = 'block';
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+      });
+      document.getElementById('result-panel').style.display   = 'none';
+      document.getElementById('success-screen').style.display = 'block';
+      setStep(3);
+    } catch {
+      btn.disabled = false;
+      document.getElementById('btn-send-text').style.display = 'inline';
+      document.getElementById('spinner2').style.display = 'none';
+      alert('Erro de conexão. Verifique sua internet e tente novamente.');
+    }
+  }
+
+  function voltarForm() {
+    document.getElementById('result-panel').style.display = 'none';
+    document.getElementById('form-area').style.display    = 'block';
+    setStep(1);
+  }
+
+  function novoRegistro() {
+    document.getElementById('success-screen').style.display = 'none';
+    document.getElementById('form-area').style.display      = 'block';
+    ['nome','campus','peso','altura'].forEach(id => {
+      document.getElementById(id).value = '';
+      showErr(id, false);
+    });
+    dados = {};
+    setStep(1);
+  }
+
+  function setStep(n) {
+    [1,2,3].forEach(i => {
+      const el = document.getElementById('s' + i);
+      el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+      el.querySelector('.step-num').textContent = i < n ? '✓' : i;
+    });
+  }
+</script>
+</body>
+</html>
